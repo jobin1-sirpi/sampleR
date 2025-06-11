@@ -1,66 +1,61 @@
-name: Docker Image CI/CD
-
+name: Docker Build and Deploy!!
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:  
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
-
+    - uses: actions/checkout@v4
+    
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3.10.0
-
+      uses: docker/setup-buildx-action@v2
+    
     - name: Log in to Docker Hub
-      uses: docker/login-action@v3.4.0
+      uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-
-    - name: Build and Push Docker Image to Docker Hub
-      uses: docker/build-push-action@v6.18.0
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
       with:
         context: .
         push: true
-        tags: sirpi/piperplot:latest
-
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-    - name: Deploy to Remote Server via SSH
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        SERVER_IP: ${{ secrets.SERVER_IP }}
-        SERVER_PORT: ${{ secrets.SERVER_PORT }}
-        SERVER_USER: ${{ secrets.SERVER_USER }}
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        tags: sirpi/sampleR:v1
+        
+    - name: Deploy to Local Server via SSH
       run: |
-        echo "$SSH_PRIVATE_KEY" > private_key
-        chmod 600 private_key
-
-        ssh -o StrictHostKeyChecking=no -p $SERVER_PORT -i private_key $SERVER_USER@$SERVER_IP << EOF
-          # Log in to Docker Hub
-          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-
-          # Pull the latest image
-          docker pull sirpi/piperplot:latest
-
-          # Stop and remove existing container if running
-          docker stop piperplot || true
-          docker rm piperplot || true
-
-          # Run the new container
-          docker run -d --name piperplot -p 4001:3838 sirpi/piperplot:latest
-
-          # Confirm it’s running
-          sleep 5
-          docker ps | grep piperplot
-        EOF
+        # Setup SSH key
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/ssh_private_key
+        chmod 600 /tmp/ssh_private_key
+        
+        # Deploy using SSH
+        ssh -o StrictHostKeyChecking=no -i /tmp/ssh_private_key -p ${{ secrets.SERVER_PORT }} ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} '
+          # Log in to DockerHub
+          docker login -u "${{ secrets.DOCKER_USERNAME }}" -p "${{ secrets.DOCKER_PASSWORD }}"
+          
+          # Stop and remove existing container (if running)
+          if [ "$(docker ps -q --filter name= groundwater)" ]; then
+            docker stop sampleR || true
+            docker rm  sampleR  || true
+          fi
+          
+          # Pull the latest Docker image
+          docker pull sirpi/sampleR:v1
+          
+          # Run the container
+          docker run -d \
+            --restart=unless-stopped \
+            --name sampleR \
+            -p 3838:3838 \
+            sirpi/sampleR:v1
+        '
+        
+    - name: Remove SSH key
+      if: always()
+      run: rm -f /tmp/ssh_private_key
