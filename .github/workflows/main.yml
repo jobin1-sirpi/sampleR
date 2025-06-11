@@ -52,7 +52,7 @@ jobs:
           docker run -d \
             --restart=unless-stopped \
             --name sampleR \
-            -p 3838:3838 \
+            -p 4001:3838 \
             sirpi/sampleR:v1
         '
         
