@@ -26,7 +26,7 @@ jobs:
       with:
         context: .
         push: true
-        tags: sirpi/sampleR:v1
+        tags: sirpi/sampler:v1
         
     - name: Deploy to Local Server via SSH
       run: |
@@ -40,20 +40,20 @@ jobs:
           docker login -u "${{ secrets.DOCKER_USERNAME }}" -p "${{ secrets.DOCKER_PASSWORD }}"
           
           # Stop and remove existing container (if running)
-          if [ "$(docker ps -q --filter name= groundwater)" ]; then
-            docker stop sampleR || true
-            docker rm  sampleR  || true
+          if [ "$(docker ps -q --filter name= sampler)" ]; then
+            docker stop sampler || true
+            docker rm  sampler  || true
           fi
           
           # Pull the latest Docker image
-          docker pull sirpi/sampleR:v1
+          docker pull sirpi/sampler:v1
           
           # Run the container
           docker run -d \
             --restart=unless-stopped \
-            --name sampleR \
+            --name sampler \
             -p 4001:3838 \
-            sirpi/sampleR:v1
+            sirpi/sampler:v1
         '
         
     - name: Remove SSH key
