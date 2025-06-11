@@ -1,0 +1,178 @@
+---
+title: "**Groundwater Chemistry Report**"
+output: pdf_document
+params:
+  data: NULL
+  state: ""
+  district: ""
+  block: ""
+  image_path: NULL
+---
+
+# Introduction to Groundwater Chemistry
+
+Groundwater is a vital natural resource that sustains life, agriculture, and industry it serves as the primary source of the drinking water for the significant portion of global population and its heavily relied upon for irrigation and industrial use, particularly in arid and semi-arid regions the quality of the groundwater is as important as its quantity, and this quality is largely defined by its chemical composition.
+
+The chemical characteristics of the ground water are shaped by a complex interplay of factors, including the nature of the aquifer rocks, residence time of underground water, climatic conditions, biological activity, and anthropogenic influences such as land use, agricultural runoff, and industrial discharge. As groundwater moves through different soil and rock layers, it dissolves minerals and accumulates various dissolved irons, which defines its chemical profile.
+
+Major ions such as calcium(Ca), magnesium (Mg), sodium(Na), chloride(Cl), sulphate(SO4) and bicarbonate (HCO3) are commonly analyzed to access to suitability of groundwater for various purposes. Their relative concentrations help in identifying hydrochemical facies and inferring geochemical processes like ion exchange, leaching, evaporation.
+
+Analyzing these parameters allow researchers and policy makers to: 
+
+1. Classify water types ( Permanent Hardwater, Temporary Hardwater, Alkali Carbonates, Saline)
+
+2. Detect contamination from ground water resources.
+
+3. Guide water treatment approaches for domestic and industrial use.
+
+4. Advice agricultural practices based on salinity and sodicity levels.
+
+This report presents a comprehensive overview of groundwater chemistry in selected region. It includes statistical summaries, visual representations such as piper diagrams and bar charts, and classification of water types based on chemical facies. In addition it provides actionable recommendations tailored to the identified water types to support sustainable groundwater management.
+
+Ultimately, understanding groundwater chemistry is essential not only for protecting this invisible yet indispensable resource but also for ensuring long-term water security, ecosystem health, and public welfare. 
+
+
+
+# Executive Summary
+
+```{r executive_summary, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(smwrGraphs)
+library(kableExtra)
+library(leaflet)
+library(webshot2)
+library(htmlwidgets)
+
+# Summary Table
+
+summary_df <- data.frame(
+  Parameter = c("State/UT", "District", "Block", "Number of Samples"),
+  Value = c(
+    ifelse(params$state == "None" || params$state == "", "All", params$state),
+    ifelse(params$district == "None" || params$district == "", "All", params$district),
+    ifelse(params$block == "None" || params$block == "", "All", params$block),
+    ifelse(is.null(params$data), 0, nrow(params$data))
+  )
+)
+
+summary_table <- kable(summary_df, booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "hold_position")) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#306998")
+
+summary_table
+```
+
+
+
+
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+
+
+
+
+# Piper Plot
+
+A piper diagram is as trilinear graphical representation that helps in visualizing the chemistry of water sample. It consists of two triangular fields-one for cations(positively charged ions) and one for anions(negatively charged ions)- and a central diamond-shaped field that reflects the overall water type based on the combination of cations and anions.
+
+In the cation triangle ions like calcium, magnesium, sodium are plotted as percentages of total cations. 
+In the anions triangle ions like chloride, sulphate, bicarbonate are plotted as percentages of total anions. 
+These points are then projected into the diamond to indicate the overall hydrochemical facies of the sample.
+
+
+```{r, echo=FALSE, out.width='100%', fig.align='center'}
+knitr::include_graphics(params$image_path)
+```
+
+# Average chemical composition (%)
+
+```{r average_chem_plot, echo=FALSE}
+if (!is.null(params$data) && nrow(params$data) > 0) {
+  avg_comp <- colMeans(params$data[, c("Ca_pct", "Mg_pct", "Na_pct", "Cl_pct", "SO4_pct", "HCO3_pct")], na.rm = TRUE)
+  barplot(
+    avg_comp,
+    col = rainbow(6),
+    ylab = "Percentage",
+    ylim = c(0, 100),
+    names.arg = c("Ca", "Mg", "Na", "Cl", "SO4", "HCO3")
+  )
+} else {
+  plot(NULL, ann = FALSE, axes = FALSE)
+  text(0.5, 0.5, "No data available for the selected filters.", cex = 1.2)
+}
+```
+
+
+
+# Identified Water Types
+
+```{r water_types, results='asis', echo=FALSE}
+if (!is.null(params$data) && nrow(params$data) > 0) {
+  
+
+  for (type in unique(params$data$water_type)) {
+    cat(paste("- ", type, "\n", sep = ""))
+  }
+} else {
+  cat("No water types to display.")
+}
+
+```
+
+
+
+# Suggested Measures
+
+```{r suggested_measures, results='asis', echo=FALSE}
+if (!is.null(params$data) && nrow(params$data) > 0) {
+  types <- unique(params$data$water_type)
+  measures_list <- list(
+    "Permanent Hardness" = c(
+      "- Requires investment in softening infrastructure. (Drinking water)",
+      "- May reduce soil permeability. (Agriculture)",
+      "- Accelerates equipment corrosion. (Industrial)",
+      "- Elevated sulfate affects aquatic life. (Environmental)",
+      "- Calcium intake considerations. (Public Health)"
+    ),
+    "Temporary Hardness" = c(
+      "- Real-time monitoring. (Drinking water)",
+      "- Improves soil structure. (Agriculture)",
+      "- Descaling costs rise. (Industrial)",
+      "- Alkaline helps ecosystems. (Conservation)",
+      "- Magnesium strategies. (Public Health)"
+    ),
+    "Alkali Carbonates" = c(
+      "- Desalination for sodium. (Drinking water)",
+      "- Sodicity affects crops. (Agriculture)",
+      "- Scaling disrupts plants. (Industrial)",
+      "- Alters pH. (Ecosystems)",
+      "- Sodium reduction needed. (Health)"
+    ),
+    "Saline" = c(
+      "- Desalination needed. (Drinking water)",
+      "- Leaching strategies. (Agriculture)",
+      "- Regulate blowdown. (Industry)",
+      "- Recharge aquifers. (Environment)",
+      "- Hypertension screening. (Public Health)"
+    ),
+    "Mixed Type" = c("- Comprehensive assessment needed. (All sectors)"),
+    "Unknown" = c("- Further chemical analysis required. (All sectors)")
+  )
+
+  for (type in types) {
+    cat(paste("###", type, "\n\n"))
+    if (type %in% names(measures_list)) {
+      for (measure in measures_list[[type]]) {
+        cat(paste("- ", measure, "\n", sep = ""))
+      }
+    } else {
+      cat("No specific measures found for this water type.\n")
+    }
+    cat("\n")
+  }
+} else {
+  cat("No suggested measures to display.")
+}
+```
+
+
