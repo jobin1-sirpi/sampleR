@@ -1,4 +1,4 @@
-FROM sirpi/groundwater:v1
+FROM luvisjostonj/groundwater:v2
 
 COPY . .
 
